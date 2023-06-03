@@ -1,11 +1,14 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Post,
   Put,
+  HttpCode,
 } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { CreateTaskDTO } from 'src/dto/create.task.dto';
@@ -22,12 +25,21 @@ export class TaskController {
 
   @Get('/:id')
   public async getTask(@Param('id') id: string) {
-    return this.taskService.findOne(id);
+    const task = await this.taskService.findOne(id);
+    if (!task) throw new NotFoundException('Task not found');
+    return task;
   }
 
   @Post()
   public async createTask(@Body() createTask: CreateTaskDTO) {
-    return this.taskService.create(createTask);
+    try {
+      return await this.taskService.create(createTask);
+    } catch (error) {
+      if (error.code === 11000) {
+        throw new ConflictException('Task al ready exist');
+      }
+      throw error;
+    }
   }
 
   @Put('/:id')
@@ -35,11 +47,16 @@ export class TaskController {
     @Param('id') id: string,
     @Body() updateTask: UpdateTaskDto,
   ) {
-    return this.taskService.update(id, updateTask);
+    const task = await this.taskService.update(id, updateTask);
+    if (!task) throw new NotFoundException('Task not found');
+    return task;
   }
 
   @Delete('/:id')
+  @HttpCode(204)
   public async deleteTask(@Param('id') id: string) {
-    return this.taskService.delete(id);
+    const task = await this.taskService.delete(id);
+    if (!task) throw new NotFoundException('Task not found');
+    return task;
   }
 }
